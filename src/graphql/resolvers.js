@@ -1,7 +1,7 @@
 import { gql } from 'apollo-boost'
 
 
-import { addItemToCart } from './cart.utils'
+import { addItemToCart, removeItemFromCart, getCartItemCount, clearItemFromCart } from './cart.utils'
 
 export const typeDefs = gql`
 
@@ -12,6 +12,8 @@ extend type Item {
 extend type Mutation {
     ToggleCartHidden: Boolean!
     AddItemToCart(item: Item!) : [Item]!
+    RemoveItemFromCart(item: Item!): [Item]!
+    ClearItemFromCart(item: Item!): [Item]!
 } 
 `
 // cart hidden -> client directive @
@@ -28,6 +30,12 @@ const GET_CART_ITEMS = gql`
   }
 `;
 
+const GET_ITEM_COUNT = gql`
+  {
+    itemCount @client
+  }
+`;
+
 export const resolvers = {
     Mutation: {
         toggleCartHidden: (_root, _args, { cache }) => {
@@ -41,6 +49,7 @@ export const resolvers = {
 
             return !cartHidden
         },
+
         addItemToCart: (_root, { item }, { cache }) => {
             const { cartItems } = cache.readQuery({ // destructure bc of cartItems @client 
                 query: GET_CART_ITEMS
@@ -48,11 +57,59 @@ export const resolvers = {
 
             const newCartItems = addItemToCart(cartItems, item);
             cache.writeQuery({
-                query: addItemToCart,
-                data: { cartItems: newCartItems }
-            })
+                query: GET_CART_ITEMS,
+                data: { cartItems: newCartItems },
+            });
+
+            cache.writeQuery({
+                query: GET_ITEM_COUNT,
+                data: { itemCount: getCartItemCount(newCartItems) },
+            });
 
             return cartItems;
-        }
+        },
+
+        removeItemFromCart: (_root, { item }, { cache }) => {
+            const { cartItems } = cache.readQuery({
+                query: GET_CART_ITEMS,
+            });
+
+            const newCartItems = removeItemFromCart(cartItems, item)
+
+            // update the item count as well
+            cache.writeQuery({
+                query: GET_ITEM_COUNT,
+                data: { itemCount: getCartItemCount(newCartItems) },
+            });
+
+            cache.writeQuery({
+                query: GET_CART_ITEMS,
+                data: { cartItems: newCartItems },
+            });
+
+            return newCartItems;
+        },
+
+        clearItemFromCart: (_root, { item }, { cache }) => {
+
+            const { cartItems } = cache.readQuery({
+                query: GET_CART_ITEMS,
+            });
+
+            const newCartItems = clearItemFromCart(cartItems, item)
+
+            // update the item count as well
+            cache.writeQuery({
+                query: GET_ITEM_COUNT,
+                data: { itemCount: getCartItemCount(newCartItems) },
+            });
+
+            cache.writeQuery({
+                query: GET_CART_ITEMS,
+                data: { cartItems: newCartItems },
+            });
+
+            return newCartItems;
+        },
     }
 } 

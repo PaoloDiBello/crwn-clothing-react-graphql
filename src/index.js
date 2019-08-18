@@ -13,7 +13,7 @@ import { createHttpLink } from 'apollo-link-http'
 
 import { InMemoryCache } from 'apollo-cache-inmemory'
 
-import { ApolloClient, gql } from 'apollo-boost'
+import { ApolloClient } from 'apollo-boost'
 
 import { resolvers, typeDefs } from './graphql/resolvers'
 
@@ -35,7 +35,8 @@ const client = new ApolloClient({
 client.writeData({
   data: {
     cartHidden: true,
-    cartItems: []
+    cartItems: [],
+    itemCount: 0
   }
 })
 
