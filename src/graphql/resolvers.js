@@ -11,7 +11,7 @@ extend type Item {
 
 extend type Mutation {
     ToggleCartHidden: Boolean!
-    AddItemToCart(item: Item!): [Item] 
+    AddItemToCart(item: Item!) : [Item]!
 } 
 `
 // cart hidden -> client directive @
