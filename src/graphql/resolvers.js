@@ -1,7 +1,7 @@
 import { gql } from 'apollo-boost'
 
 
-import { addItemToCart, removeItemFromCart, getCartItemCount, clearItemFromCart } from './cart.utils'
+import { addItemToCart, removeItemFromCart, getCartItemCount, clearItemFromCart, getCartTotalAmount } from './cart.utils'
 
 export const typeDefs = gql`
 
@@ -13,7 +13,7 @@ extend type Mutation {
     ToggleCartHidden: Boolean!
     AddItemToCart(item: Item!) : [Item]!
     RemoveItemFromCart(item: Item!): [Item]!
-    ClearItemFromCart(item: Item!): [Item]!
+    ClearItemFromCart(item: Item!): [Item]!   
 } 
 `
 // cart hidden -> client directive @
@@ -36,37 +36,52 @@ const GET_ITEM_COUNT = gql`
   }
 `;
 
+const GET_CART_TOTAL_AMOUNT = gql`
+  {
+    cartTotalAmount @client
+  }
+`;
+
 export const resolvers = {
     Mutation: {
         toggleCartHidden: (_root, _args, { cache }) => {
             const { cartHidden } = cache.readQuery({
                 query: GET_CART_HIDDEN,
             });
+
             cache.writeQuery({
                 query: GET_CART_HIDDEN,
                 data: { cartHidden: !cartHidden }
-            })
+            });
 
-            return !cartHidden
+            return !cartHidden;
         },
 
         addItemToCart: (_root, { item }, { cache }) => {
-            const { cartItems } = cache.readQuery({ // destructure bc of cartItems @client 
-                query: GET_CART_ITEMS
-            })
-
-            const newCartItems = addItemToCart(cartItems, item);
-            cache.writeQuery({
+            const { cartItems } = cache.readQuery({
                 query: GET_CART_ITEMS,
-                data: { cartItems: newCartItems },
             });
 
+            const newCartItems = addItemToCart(cartItems, item);
+
+            // update the item count as well
             cache.writeQuery({
                 query: GET_ITEM_COUNT,
                 data: { itemCount: getCartItemCount(newCartItems) },
             });
 
-            return cartItems;
+            // update the cart total amount also
+            cache.writeQuery({
+                query: GET_CART_TOTAL_AMOUNT,
+                data: { cartTotalAmount: getCartTotalAmount(newCartItems) },
+            });
+
+            cache.writeQuery({
+                query: GET_CART_ITEMS,
+                data: { cartItems: newCartItems },
+            });
+
+            return newCartItems;
         },
 
         removeItemFromCart: (_root, { item }, { cache }) => {
@@ -80,6 +95,12 @@ export const resolvers = {
             cache.writeQuery({
                 query: GET_ITEM_COUNT,
                 data: { itemCount: getCartItemCount(newCartItems) },
+            });
+
+            // update the cart total amount also
+            cache.writeQuery({
+                query: GET_CART_TOTAL_AMOUNT,
+                data: { cartTotalAmount: getCartTotalAmount(newCartItems) },
             });
 
             cache.writeQuery({
@@ -104,6 +125,12 @@ export const resolvers = {
                 data: { itemCount: getCartItemCount(newCartItems) },
             });
 
+            // update the cart total amount also
+            cache.writeQuery({
+                query: GET_CART_TOTAL_AMOUNT,
+                data: { cartTotalAmount: getCartTotalAmount(newCartItems) },
+            });
+
             cache.writeQuery({
                 query: GET_CART_ITEMS,
                 data: { cartItems: newCartItems },
@@ -112,4 +139,4 @@ export const resolvers = {
             return newCartItems;
         },
     }
-} 
+}
